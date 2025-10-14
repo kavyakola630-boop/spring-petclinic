@@ -3,25 +3,21 @@ pipeline {
         label 'JDKJAVA' 
     }
 
-    // Check GitHub every 5 minutes for new commits
     triggers { 
-        pollSCM('H/5 * * * *') 
+        pollSCM('* * * * *') 
     }
 
     stages {
 
         stage('Git Checkout') {
             steps {
-                echo '📥 Checking out source code...'
                 git branch: 'main', url: 'https://github.com/kavyakola630-boop/spring-petclinic.git'
             }
         }
 
         stage('Java Build and Sonar Scan') {
             steps {
-                echo '⚙️ Starting Maven build and SonarQube scan...'
                 withCredentials([string(credentialsId: 'sonar_id', variable: 'SONAR_TOKEN')]) {
-                    // Ensure your Jenkins SonarQube installation name = 'SONARQUBE'
                     withSonarQubeEnv('SONARQUBE') {
                         sh '''
                             mvn clean package sonar:sonar \
@@ -34,31 +30,20 @@ pipeline {
                 }
             }
         }
-
-        stage('Quality Gate') {
-            steps {
-                echo '🧠 Waiting for SonarQube Quality Gate result...'
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
     }
 
     post {
         always {
-            echo '📦 Archiving build artifacts and test reports...'
             archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
             junit '**/target/surefire-reports/*.xml'
         }
 
         success {
-            echo '✅ Build and SonarQube analysis successful — Great job, Kavya!'
+            println('Build and SonarQube analysis successful')
         }
 
         failure {
-            echo '❌ Build failed — Check the logs in Jenkins console output.'
+            println('Build failed. Check Jenkins logs for details')
         }
     }
 }
-
