@@ -33,8 +33,8 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            junit 'target/surefire-reports/*.xml'
+            archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+            junit '**/target/surefire-reports/*.xml'
         }
         success {
             echo '✅ Build and SonarQube analysis successful — Good Pipeline!'
