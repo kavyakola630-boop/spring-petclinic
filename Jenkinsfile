@@ -16,7 +16,7 @@ pipeline {
 
         stage('Java Build and Sonar Scan') {
             steps {
-                withCredentials([string(credentialsId: 'sonarqubejava', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: 'sonar_ID', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONARQUBE') {
                         sh '''
                             mvn clean package sonar:sonar \
