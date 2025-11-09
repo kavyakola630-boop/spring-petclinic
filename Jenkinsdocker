@@ -1,24 +1,25 @@
 pipeline {
-    agent any
+    agent {
+        label 'dockernode'   // Make sure your Jenkins node has Docker installed
+    }
 
     environment {
-        // 🔧 Docker Hub configuration
-        DOCKER_USER = 'kolakavya'
-        DOCKER_IMAGE = "${DOCKER_USER}/spring-petclinic"
-        DOCKER_TAG = 'latest'
+        DOCKERHUB_CREDENTIALS = credentials('docker_hub')   // Jenkins credentials ID
+        DOCKER_IMAGE = "kolakavya/spring-petclinic:latest"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo '📥 Checking out code from GitHub...'
+                echo '📥 Checking out source code...'
                 git branch: 'main', url: 'https://github.com/kavyakola630-boop/spring-petclinic.git'
             }
         }
 
         stage('Build with Maven') {
             steps {
-                echo '🏗️ Building Spring Boot project using Maven...'
+                echo '🔧 Building the application with Maven...'
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -27,7 +28,7 @@ pipeline {
             steps {
                 echo '🛠️ Creating Dockerfile dynamically...'
                 writeFile file: 'Dockerfile', text: '''
-                FROM openjdk:17-jdk-slim
+                FROM eclipse-temurin:17-jdk-jammy
                 WORKDIR /app
                 COPY target/*.jar app.jar
                 EXPOSE 8080
@@ -39,20 +40,17 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
-                sh '''
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    docker images | grep spring-petclinic
-                '''
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
 
         stage('Push Docker Image to Docker Hub') {
             steps {
                 echo '📦 Pushing image to Docker Hub...'
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker_hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
                         echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push $DOCKER_IMAGE
                     '''
                 }
             }
@@ -60,19 +58,17 @@ pipeline {
 
         stage('Remove Existing Container (if any)') {
             steps {
-                echo '🧹 Removing old container if exists...'
+                echo '🧹 Removing any existing container...'
                 sh '''
-                    docker rm -f spring-petclinic || true
+                    docker rm -f petclinic || true
                 '''
             }
         }
 
         stage('Run New Container') {
             steps {
-                echo '🚀 Running new Docker container...'
-                sh '''
-                    docker run -d --name spring-petclinic -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                '''
+                echo '🚀 Running new container...'
+                sh 'docker run -d -p 8080:8080 --name petclinic $DOCKER_IMAGE'
             }
         }
 
@@ -86,10 +82,13 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline executed successfully! Application is now running inside Docker.'
+            echo '✅ Pipeline executed successfully! Spring Petclinic is running in Docker.'
         }
         failure {
             echo '❌ Pipeline failed — check Jenkins console logs for details.'
+        }
+        always {
+            echo '🧾 Build completed (success or fail).'
         }
     }
 }
