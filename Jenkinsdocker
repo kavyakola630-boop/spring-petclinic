@@ -2,14 +2,22 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'kavyakola630/spring-petclinic' 
+        DOCKER_IMAGE = 'kavyakola630/spring-petclinic' // 🔹 Change to your Docker Hub repo
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/kavyakola630-boop/spring-petclinic.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                echo '🏗️ Building Spring Boot project using Maven...'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
@@ -18,7 +26,7 @@ pipeline {
                 script {
                     echo '🛠️ Creating Dockerfile dynamically...'
                     writeFile file: 'Dockerfile', text: '''
-FROM openjdk:-25-slim
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
 COPY target/*.jar app.jar
 EXPOSE 8080
@@ -30,6 +38,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
         stage('Build Docker Image') {
             steps {
+                echo '🐳 Building Docker image...'
                 sh 'docker build -t $DOCKER_IMAGE:latest .'
             }
         }
@@ -37,6 +46,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
         stage('Push Docker Image to Docker Hub') {
             steps {
                 script {
+                    echo '📦 Pushing image to Docker Hub...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
                             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -50,20 +60,23 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
         stage('Remove Existing Container (if any)') {
             steps {
+                echo '🧹 Removing old container if exists...'
                 sh '''
                     docker ps -aq --filter "name=petclinic" | xargs -r docker rm -f || true
                 '''
             }
         }
 
-        stage('Run Container') {
+        stage('Run New Container') {
             steps {
+                echo '🚀 Running new container...'
                 sh 'docker run -d -p 8080:8080 --name petclinic $DOCKER_IMAGE:latest'
             }
         }
 
         stage('Check Running Containers') {
             steps {
+                echo '🔎 Checking running Docker containers...'
                 sh 'docker ps'
             }
         }
@@ -71,10 +84,10 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
     post {
         success {
-            echo '✅ Docker image built, pushed, and container running successfully!'
+            echo '✅ Pipeline executed successfully — image pushed & container running!'
         }
         failure {
-            echo '❌ Pipeline failed — check logs for details.'
+            echo '❌ Pipeline failed — check Jenkins console logs for details.'
         }
     }
 }
