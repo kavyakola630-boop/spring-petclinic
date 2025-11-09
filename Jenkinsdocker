@@ -6,10 +6,28 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/kavyakola630-boop/spring-petclinic.git'
+            }
+        }
+
+        stage('Verify Dockerfile') {
+            steps {
+                script {
+                    echo '🔍 Checking if Dockerfile exists...'
+                    // Verify Dockerfile presence
+                    sh '''
+                        if [ ! -f Dockerfile ]; then
+                            echo "❌ ERROR: Dockerfile not found in workspace!"
+                            exit 1
+                        fi
+                        echo "✅ Dockerfile found!"
+                        head -10 Dockerfile || true
+                    '''
+                }
             }
         }
 
