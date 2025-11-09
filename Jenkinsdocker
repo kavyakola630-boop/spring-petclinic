@@ -2,11 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'kavyakola630/spring-petclinic' // Change to your Docker Hub repo name
+        DOCKER_IMAGE = 'kavyakola630/spring-petclinic' 
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -14,18 +13,16 @@ pipeline {
             }
         }
 
-        stage('Verify Dockerfile') {
+        stage('Create Dockerfile') {
             steps {
                 script {
-                    echo '🔍 Checking if Dockerfile exists...'
-                    // Verify Dockerfile presence
-                    sh '''
-                        if [ ! -f Dockerfile ]; then
-                            echo "❌ ERROR: Dockerfile not found in workspace!"
-                            exit 1
-                        fi
-                        echo "✅ Dockerfile found!"
-                        head -10 Dockerfile || true
+                    echo '🛠️ Creating Dockerfile dynamically...'
+                    writeFile file: 'Dockerfile', text: '''
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
                     '''
                 }
             }
